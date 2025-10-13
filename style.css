@@ -1,0 +1,96 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+    background-color: #f4f7f6;
+    color: #333;
+}
+
+h1 {
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+#app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.stage {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.gate {
+    background-color: #eaf2f8;
+    border: 2px dashed #3498db;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.gate h2, .stage h2 {
+    margin-top: 0;
+    color: #34495e;
+}
+
+.gate-decision button {
+    padding: 10px 20px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    color: white;
+}
+
+.go-btn { background-color: #27ae60; }
+.hold-btn { background-color: #f39c12; }
+.kill-btn { background-color: #c0392b; }
+.recycle-btn { background-color: #2980b9; }
+
+.hidden {
+    display: none;
+}
+
+.status {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.status-go { background-color: #d4efdf; color: #145a32; }
+.status-hold { background-color: #fef5e7; color: #b7791f; }
+.status-kill { background-color: #f5b7b1; color: #78281f; }
+.status-recycle { background-color: #d6eaf8; color: #1a5276; }
+.status-complete { background-color: #a9dfbf; color: #145a32; }
+.status-pending { background-color: #fdebd0; color: #af601a; }
+.status-discovery { background-color: #e8daef; color: #5b2c6f; }
+.status-final { background-color: #d1f2eb; color: #0e6251; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+th, td {
+    border: 1px solid #bdc3c7;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #ecf0f1;
+    color: #2c3e50;
+}
