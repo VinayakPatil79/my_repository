@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goods Inward Prototype (v3 - Real Data)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
+        h1 { color: #333; }
+        .container { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+        .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .filters div { display: flex; flex-direction: column; }
+        .filters label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #555; }
+        .filters input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+        .actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .actions-left { display: flex; gap: 10px; }
+        .btn { padding: 10px 20px; font-size: 1em; font-weight: bold; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; }
+        .btn-primary:disabled { background-color: #a0cfff; cursor: not-allowed; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-export { padding: 8px 15px; font-size: 0.9em; color: #333; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+        .btn-export:disabled { background-color: #f8f8f8; color: #aaa; cursor: not-allowed; }
+        
+        .results { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; white-space: nowrap; }
+        th { background-color: #f4f4f4; }
+        .msg-container { color: #888; font-style: italic; text-align: center; padding: 20px; }
+        .pagination { display: flex; justify-content: center; align-items: center; margin-top: 20px; }
+        .pagination button { padding: 8px 12px; margin: 0 5px; cursor: pointer; }
+        .pagination span { margin: 0 10px; font-weight: bold; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Goods Inward Module</h1>
+
+    <div class="container">
+        <fieldset>
+            <legend>Filters</legend>
+            <div class="filters" id="filter-form">
+                <div>
+                    <label for="f-plant">Plant</label>
+                    <input type="text" id="f-plant" class="filter-input" list="dl-plant">
+                    <datalist id="dl-plant"></datalist>
+                </div>
+                <div>
+                    <label for="f-bill-no">Bill no</label>
+                    <input type="text" id="f-bill-no" class="filter-input" list="dl-bill-no">
+                    <datalist id="dl-bill-no"></datalist>
+                </div>
+                <div>
+                    <label for="f-po-no">PO no</label>
+                    <input type="text" id="f-po-no" class="filter-input" list="dl-po-no">
+                    <datalist id="dl-po-no"></datalist>
+                </div>
+                <div>
+                    <label for="f-material-no">Material number</label>
+                    <input type="text" id="f-material-no" class="filter-input" list="dl-material-no">
+                    <datalist id="dl-material-no"></datalist>
+                </div>
+                <div>
+                    <label for="f-from-date">From Date (GR Date)</label>
+                    <input type="date" id="f-from-date" class="filter-input">
+                </div>
+                <div>
+                    <label for="f-to-date">To Date (GR Date)</label>
+                    <input type="date" id="f-to-date" class="filter-input">
+                </div>
+            </div>
+        </fieldset>
+
+        <br>
+
+        <div class="actions">
+            <div class="actions-left">
+                <button id="btn-proceed" class="btn btn-primary" disabled>Proceed</button>
+                <button id="btn-clear" class="btn btn-secondary">Clear Filters</button>
+            </div>
+            <button id="btn-export" class="btn-export" disabled>Export to Excel</button>
+        </div>
+
+        <div class="results">
+            <div id="loading-msg" class="msg-container hidden">Processing...</div>
+            <div id="no-data-msg" class="msg-container hidden">No data found for the selected filters.</div>
+            
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Serial Number</th>
+                        <th>Bill number</th>
+                        <th>Bill date</th>
+                        <th>Plant</th>
+                        <th>PO number</th>
+                        <th>Material number</th>
+                        <th>Material description</th>
+                        <th>GE number</th>
+                        <th>GE date</th>
+                        <th>GR No</th>
+                        <th>GR Date</th>
+                        <th>GR qty</th>
+                        <th>Accepted QTY</th>
+                        <th>Return qty</th>
+                        <th>Currency</th>
+                        <th>Amount payable</th>
+                        <th>Due date</th>
+                        <th>Payment doc</th>
+                        <th>Paid date</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="pagination hidden" id="pagination-controls">
+            <button id="btn-prev">Previous</button>
+            <span id="page-info">Page 1 of 1</span>
+            <button id="btn-next">Next</button>
+        </div>
+    </div>
+
+    <script>
+        // --- REAL DATA (From your CSV file) ---
+        // I have processed your CSV file into this JavaScript array.
+        // All logic now uses this data and these keys (VBELN, MATNR, etc.)
+        const REAL_DATA = [
+            { "VBELN": "P2/GST/0131/1718", "INVDT": "2017-08-16", "CATDA": "5420000120", "EBELP": "210", "MATNR": "630020155079", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534250", "GDATE": "2017-08-16", "MBLNR": "5000497048", "BUDAT": "2017-08-16", "MENGE": "39", "QLTY_IND": "C", "LMENGE01": "39", "LMENGE07": "0", "QLDAT": "2017-08-17 00:00:00", "INV_IND": "C", "BELNR": "5105646526", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "30", "NETDT": "2017-09-15", "AUGBL": "2400006419", "AUGDT": "2017-09-15", "POZBD1T": "30", "PONETDT": "2017-09-15", "LIFKU": "200772", "WERKS": "1020" },
+            { "VBELN": "P2/GST/0132/1718", "INVDT": "2017-08-16", "CATDA": "5420000120", "EBELP": "270", "MATNR": "630020160002", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534252", "GDATE": "2017-08-16", "MBLNR": "5000497049", "BUDAT": "2017-08-16", "MENGE": "16", "QLTY_IND": "C", "LMENGE01": "16", "LMENGE07": "0", "QLDAT": "2017-08-17 00:00:00", "INV_IND": "C", "BELNR": "5105646525", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "30", "NETDT": "2017-09-15", "AUGBL": "2400006419", "AUGDT": "2017-09-15", "POZBD1T": "30", "PONETDT": "2017-09-15", "LIFKU": "200772", "WERKS": "1020" },
+            { "VBELN": "P2/GST/0134/1718", "INVDT": "2017-08-16", "CATDA": "5420000120", "EBELP": "310", "MATNR": "630020160601", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534527", "GDATE": "2017-08-16", "MBLNR": "5000497164", "BUDAT": "2017-08-16", "MENGE": "78", "QLTY_IND": "C", "LMENGE01": "78", "LMENGE07": "0", "QLDAT": "2017-08-16 00:00:00", "INV_IND": "C", "BELNR": "5105642613", "BEDAT": "2017-08-19", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "30", "NETDT": "2017-09-15", "AUGBL": "2400006419", "AUGDT": "2017-09-15", "POZBD1T": "30", "PONETDT": "2017-09-15", "LIFKU": "200772", "WERKS": "1020" },
+            { "VBELN": "INV001523/1718", "INVDT": "2017-08-16", "CATDA": "5420000102", "EBELP": "80", "MATNR": "630020180603", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534561", "GDATE": "2017-08-16", "MBLNR": "5000497280", "BUDAT": "2017-08-17", "MENGE": "188", "QLTY_IND": "C", "LMENGE01": "188", "LMENGE07": "0", "QLDAT": "2017-08-21 00:00:00", "INV_IND": "C", "BELNR": "5105646441", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "15", "NETDT": "2017-08-31", "AUGBL": "2400005931", "AUGDT": "2017-08-31", "POZBD1T": "15", "PONETDT": "2017-09-01", "LIFKU": "201318", "WERKS": "1020" },
+            { "VBELN": "P2/GST/0131/1718", "INVDT": "2017-08-16", "CATDA": "5420000120", "EBELP": "700", "MATNR": "630040150005", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534250", "GDATE": "2017-08-16", "MBLNR": "5000497048", "BUDAT": "2017-08-16", "MENGE": "69", "QLTY_IND": "C", "LMENGE01": "69", "LMENGE07": "0", "QLDAT": "2017-08-17 00:00:00", "INV_IND": "C", "BELNR": "5105646526", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "30", "NETDT": "2017-09-15", "AUGBL": "2400006419", "AUGDT": "2017-09-15", "POZBD1T": "30", "PONETDT": "2017-09-15", "LIFKU": "200772", "WERKS": "1020" },
+            { "VBELN": "P2/GST/0134/1718", "INVDT": "2017-08-16", "CATDA": "5420000120", "EBELP": "700", "MATNR": "630040150005", "MAKTX": "COMPRESSOR HOUSING MCD", "GNUMB": "10534527", "GDATE": "2017-08-16", "MBLNR": "5000497164", "BUDAT": "2017-08-16", "MENGE": "216", "QLTY_IND": "C", "LMENGE01": "216", "LMENGE07": "0", "QLDAT": "2017-08-16 00:00:00", "INV_IND": "C", "BELNR": "5105642613", "BEDAT": "2017-08-19", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "30", "NETDT": "2017-09-15", "AUGBL": "2400006419", "AUGDT": "2017-09-15", "POZBD1T": "30", "PONETDT": "2017-09-15", "LIFKU": "200772", "WERKS": "1020" },
+            { "VBELN": "9275038153", "INVDT": "2017-08-01", "CATDA": "6600043322", "EBELP": "130", "MATNR": "25001664", "MAKTX": "HOLDER, G1011.2525R 4T21GX24, WALTER", "GNUMB": "10532964", "GDATE": "2017-08-10", "MBLNR": "5000495681", "BUDAT": "2017-08-10", "MENGE": "1", "QLTY_IND": "C", "LMENGE01": "1", "LMENGE07": "0", "QLDAT": "2017-08-11 00:00:00", "INV_IND": "C", "BELNR": "5105645626", "BEDAT": "2017-08-28", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "45", "NETDT": "2017-09-24", "AUGBL": " ", "AUGDT": "NULL", "POZBD1T": "45", "PONETDT": "2017-09-24", "LIFKU": "202452", "WERKS": "1020" },
+            { "VBELN": "GST187/17-18", "INVDT": "2017-08-10", "CATDA": "6600043277", "EBELP": "290", "MATNR": "25009800", "MAKTX": "INSERT,DCMT 11T308N-LU,AC530U,SUMITOMO", "GNUMB": "10532962", "GDATE": "2017-08-10", "MBLNR": "5000495890", "BUDAT": "2017-08-11", "MENGE": "250", "QLTY_IND": "C", "LMENGE01": "250", "LMENGE07": "0", "QLDAT": "2017-08-11 00:00:00", "INV_IND": "C", "BELNR": "5105645413", "BEDAT": "2017-08-28", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "0", "NETDT": "2017-09-01", "AUGBL": "2400008347", "AUGDT": "2017-09-01", "POZBD1T": "45", "PONETDT": "2017-09-25", "LIFKU": "201183", "WERKS": "1020" },
+            { "VBELN": "34", "INVDT": "2017-08-08", "CATDA": "6600043333", "EBELP": "20", "MATNR": "36TQ106700", "MAKTX": "RING GAUGE, TQ1067", "GNUMB": "10532956", "GDATE": "2017-08-10", "MBLNR": "5000495973", "BUDAT": "2017-08-11", "MENGE": "2", "QLTY_IND": "C", "LMENGE01": "2", "LMENGE07": "0", "QLDAT": "2017-08-28 00:00:00", "INV_IND": "C", "BELNR": "5105647039", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "45", "NETDT": "2017-09-24", "AUGBL": " ", "AUGDT": "NULL", "POZBD1T": "45", "PONETDT": "2017-09-25", "LIFKU": "200331", "WERKS": "1020" },
+            { "VBELN": "30", "INVDT": "2017-08-08", "CATDA": "6600043333", "EBELP": "80", "MATNR": "36TQ167900", "MAKTX": "PLUG GAUGE, TQ1679", "GNUMB": "10532959", "GDATE": "2017-08-10", "MBLNR": "5000496201", "BUDAT": "2017-08-12", "MENGE": "2", "QLTY_IND": "C", "LMENGE01": "2", "LMENGE07": "0", "QLDAT": "2017-08-26 00:00:00", "INV_IND": "C", "BELNR": "5105647043", "BEDAT": "2017-08-30", "RMWWR": "10000", "WAERS": "INR", "ZBD1T": "45", "NETDT": "2017-09-24", "AUGBL": " ", "AUGDT": "NULL", "POZBD1T": "45", "PONETDT": "2017-09-26", "LIFKU": "200331", "WERKS": "1020" }
+        ];
+
+        // --- CONFIGURATION ---
+        const ROWS_PER_PAGE = 50;
+
+        // --- APPLICATION STATE ---
+        const appState = {
+            currentPage: 1,
+            totalRows: 0,
+            filteredData: [],
+        };
+
+        // --- DOM ELEMENTS ---
+        const filterInputs = document.querySelectorAll('.filter-input');
+        const btnProceed = document.getElementById('btn-proceed');
+        const btnClear = document.getElementById('btn-clear');
+        const btnExport = document.getElementById('btn-export');
+        const tableBody = document.getElementById('table-body');
+        const loadingMsg = document.getElementById('loading-msg');
+        const noDataMsg = document.getElementById('no-data-msg');
+        const paginationControls = document.getElementById('pagination-controls');
+        const pageInfo = document.getElementById('page-info');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const resultsTable = document.getElementById('results-table');
+
+        // --- DOM DATALISTS (for filters) ---
+        const dlPlant = document.getElementById('dl-plant');
+        const dlBillNo = document.getElementById('dl-bill-no');
+        const dlPoNo = document.getElementById('dl-po-no');
+        const dlMaterialNo = document.getElementById('dl-material-no');
+
+
+        // --- EVENT LISTENERS ---
+
+        // 1. Check filters on any input change
+        filterInputs.forEach(input => {
+            input.addEventListener('input', checkFilters);
+        });
+
+        // 2. Handle "Proceed" button click
+        btnProceed.addEventListener('click', () => {
+            // -- Show loading state --
+            btnProceed.disabled = true;
+            btnProceed.textContent = 'Processing...';
+            loadingMsg.classList.remove('hidden');
+            resultsTable.classList.add('hidden');
+            noDataMsg.classList.add('hidden');
+            paginationControls.classList.add('hidden');
+            tableBody.innerHTML = ''; // Clear previous results
+
+            // -- Simulate network delay --
+            setTimeout(() => {
+                runFilter();
+                renderTable();
+
+                // -- Restore button state --
+                btnProceed.disabled = false;
+                btnProceed.textContent = 'Proceed';
+                loadingMsg.classList.add('hidden');
+            }, 500); // 0.5 second delay
+        });
+
+        // 3. Handle "Clear" button click
+        btnClear.addEventListener('click', () => {
+            filterInputs.forEach(input => input.value = '');
+            appState.filteredData = [];
+            appState.currentPage = 1;
+            btnProceed.disabled = true;
+            renderTable(); // Will render the empty state
+        });
+        
+        // 4. Handle Pagination
+        btnPrev.addEventListener('click', () => {
+            if (appState.currentPage > 1) {
+                appState.currentPage--;
+                renderTable();
+            }
+        });
+
+        btnNext.addEventListener('click', () => {
+            const totalPages = Math.ceil(appState.totalRows / ROWS_PER_PAGE);
+            if (appState.currentPage < totalPages) {
+                appState.currentPage++;
+                renderTable();
+            }
+        });
+        
+        // 5. Handle Export
+        btnExport.addEventListener('click', () => {
+            if (appState.filteredData.length > 0) {
+                exportToCSV(appState.filteredData, 'GoodsInwardReport');
+            }
+        });
+
+        // --- FUNCTIONS ---
+        
+        /**
+         * **NEW:** Populates the <datalist> elements with unique values from the REAL_DATA.
+         */
+        function populateFilterDatalists() {
+            // Use Set to get unique values from the data
+            const uniquePlants = [...new Set(REAL_DATA.map(row => row.WERKS))];
+            const uniqueBillNos = [...new Set(REAL_DATA.map(row => row.VBELN))];
+            const uniquePoNos = [...new Set(REAL_DATA.map(row => row.CATDA))];
+            const uniqueMaterialNos = [...new Set(REAL_DATA.map(row => row.MATNR))];
+
+            // Function to create and append options
+            const createOptions = (datalist, items) => {
+                datalist.innerHTML = ''; // Clear existing
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    datalist.appendChild(option);
+                });
+            };
+
+            // Populate each datalist
+            createOptions(dlPlant, uniquePlants);
+            createOptions(dlBillNo, uniqueBillNos);
+            createOptions(dlPoNo, uniquePoNos);
+            createOptions(dlMaterialNo, uniqueMaterialNos);
+        }
+
+        /**
+         * Checks if any filter has a value and enables/disables the "Proceed" button.
+         */
+        function checkFilters() {
+            const atLeastOneFilter = Array.from(filterInputs).some(input => input.value.trim() !== '');
+            btnProceed.disabled = !atLeastOneFilter;
+        }
+
+        /**
+         * **UPDATED:** Filters the REAL_DATA based on input fields.
+         */
+        function runFilter() {
+            // Get all filter values
+            const filters = {
+                plant: document.getElementById('f-plant').value.toLowerCase().trim(),
+                billNo: document.getElementById('f-bill-no').value.toLowerCase().trim(),
+                poNo: document.getElementById('f-po-no').value.toLowerCase().trim(),
+                matNo: document.getElementById('f-material-no').value.toLowerCase().trim(),
+                fromDate: document.getElementById('f-from-date').value,
+                toDate: document.getElementById('f-to-date').value,
+            };
+
+            appState.filteredData = REAL_DATA.filter(row => {
+                // Check string fields (case-insensitive, partial match)
+                // This logic correctly handles the searchable datalist.
+                // It checks if the row's value *includes* what the user typed.
+                const plantMatch = filters.plant ? row.WERKS.toLowerCase().includes(filters.plant) : true;
+                const billNoMatch = filters.billNo ? row.VBELN.toLowerCase().includes(filters.billNo) : true;
+                const poNoMatch = filters.poNo ? row.CATDA.toLowerCase().includes(filters.poNo) : true;
+                const matNoMatch = filters.matNo ? row.MATNR.toLowerCase().includes(filters.matNo) : true;
+
+                // Check date range (GR Date - Key is 'BUDAT')
+                // Note: String comparison works for 'YYYY-MM-DD' format
+                const fromDateMatch = filters.fromDate ? row.BUDAT >= filters.fromDate : true;
+                const toDateMatch = filters.toDate ? row.BUDAT <= filters.toDate : true;
+
+                return plantMatch && billNoMatch && poNoMatch && matNoMatch && fromDateMatch && toDateMatch;
+            });
+
+            appState.totalRows = appState.filteredData.length;
+            appState.currentPage = 1;
+        }
+
+
+        /**
+         * **UPDATED:** Renders the data grid using the REAL_DATA keys.
+         */
+        function renderTable() {
+            tableBody.innerHTML = '';
+            
+            if (appState.filteredData.length === 0) {
+                // SCENARIO: No Data Found
+                noDataMsg.classList.remove('hidden');
+                paginationControls.classList.add('hidden');
+                resultsTable.classList.add('hidden');
+                btnExport.disabled = true;
+                return;
+            }
+
+            // SCENARIO: Data Found
+            noDataMsg.classList.add('hidden');
+            paginationControls.classList.remove('hidden');
+            resultsTable.classList.remove('hidden');
+            btnExport.disabled = false;
+
+            // Calculate page details
+            const totalPages = Math.ceil(appState.totalRows / ROWS_PER_PAGE);
+            const startIndex = (appState.currentPage - 1) * ROWS_PER_PAGE;
+            const endIndex = startIndex + ROWS_PER_PAGE;
+            const pageData = appState.filteredData.slice(startIndex, endIndex);
+
+            // Populate table
+            pageData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                // We use the new data keys (VBELN, WERKS, etc.)
+                tr.innerHTML = `
+                    <td>${startIndex + index + 1}</td>
+                    <td>${row.VBELN}</td>
+                    <td>${row.INVDT}</td>
+                    <td>${row.WERKS}</td>
+                    <td>${row.CATDA}</td>
+                    <td>${row.MATNR}</td>
+                    <td>${row.MAKTX}</td>
+                    <td>${row.GNUMB}</td>
+                    <td>${row.GDATE}</td>
+                    <td>${row.MBLNR}</td>
+                    <td>${row.BUDAT}</td>
+                    <td>${row.MENGE}</td>
+                    <td>${row.LMENGE01}</td>
+                    <td>${row.LMENGE07}</td>
+                    <td>${row.WAERS}</td>
+                    <td>${row.ZBD1T}</td>
+                    <td>${row.NETDT}</td>
+                    <td>${row.AUGBL}</td>
+                    <td>${row.AUGDT}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Update pagination controls
+            pageInfo.textContent = `Page ${appState.currentPage} of ${totalPages}`;
+            btnPrev.disabled = (appState.currentPage === 1);
+            btnNext.disabled = (appState.currentPage === totalPages);
+        }
+
+        /**
+         * **UPDATED:** Exports the *entire* filtered dataset with correct headers.
+         */
+        function exportToCSV(data, filename = 'export') {
+            // Define user-friendly headers
+            const headers = [
+                "Supplier Invoice Number", "Supplier Invoice Date", "PO Number", "PO Line Item",
+                "Material Number", "Material Description", "Gate Entry Number", "Gate Entry Date",
+                "Goods Receipt Number", "GR Date", "Goods Receipt Quantity", "Accepted Quantity",
+                "Rejected Quantity", "Invoice Indicator", "Document Number", "Document Date",
+                "Document Value", "Currency", "Amt.Payable", "Due Date", "Payment Doc", "Paid Date", "Vendor code", "Plant"
+            ];
+            
+            // Define the corresponding data keys in the correct order
+            const keys = [
+                "VBELN", "INVDT", "CATDA", "EBELP", "MATNR", "MAKTX", "GNUMB", "GDATE",
+                "MBLNR", "BUDAT", "MENGE", "LMENGE01", "LMENGE07", "INV_IND", "BELNR", "BEDAT",
+                "RMWWR", "WAERS", "ZBD1T", "NETDT", "AUGBL", "AUGDT", "LIFKU", "WERKS"
+            ];
+            
+            // Create the header row
+            let csvContent = headers.join(',') + '\n';
+
+            // Create each data row
+            data.forEach(row => {
+                const values = keys.map(key => {
+                    let cell = row[key] ? row[key].toString() : ''; // Handle null/undefined
+                    // Escape commas and quotes within a cell
+                    if (cell.includes(',') || cell.includes('"')) {
+                        cell = `"${cell.replace(/"/g, '""')}"`; // Escape double quotes
+                    }
+                    return cell;
+                });
+                csvContent += values.join(',') + '\n';
+            });
+
+            // Create and download the file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) { // Feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // --- INITIALIZE APPLICATION ---
+        
+        // 1. Populate the filter dropdowns with unique data
+        populateFilterDatalists();
+        
+        // 2. Initial render (empty state)
+        renderTable();
+
+    </script>
+</body>
+</html>
